@@ -97,11 +97,6 @@ export default function Register() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F3E7FC] via-[#E2F4EE] to-[#FDF3E9] p-6 relative overflow-hidden font-sans">
-      
-      {/* Botón Volver (Estilo Pastilla Flotante) */}
-      <Link href="/" className="absolute top-6 left-6 sm:top-10 sm:left-10 inline-flex items-center text-[12px] font-extrabold uppercase tracking-wider text-[#8A95A5] hover:text-[#6C72F1] transition-colors gap-2 z-30 bg-white/60 backdrop-blur-md px-5 py-2.5 rounded-full shadow-sm border border-white">
-        <ArrowLeft className="w-4 h-4" strokeWidth={2.5} /> Volver al inicio
-      </Link>
 
       {/* Decoración de fondo (Glassmorphism blobs) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
