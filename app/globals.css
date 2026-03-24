@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  /* Colores principales Nabi */
+  --primary: #7FA8F8;
+  --primary-hover: #6C95F0;
+
+  --secondary: #B8A4F4;
+
+  /* Fondo */
+  --background: #F8FAFF;
+
+  /* Tarjetas */
+  --card: #FFFFFF;
+
+  /* Texto */
+  --foreground: #1E293B;
+  --muted: #64748B;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}

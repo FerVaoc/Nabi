@@ -1,0 +1,188 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { ArrowLeft, ShieldCheck, Mail, Lock } from "lucide-react";
+
+export default function Login() {
+  const router = useRouter();
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('error=no_account')) {
+      setErrorMsg("No tienes una cuenta con este correo. Por favor regístrate primero.");
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setLoading(true);
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        if (profile.role === 'psicologo') {
+          router.push("/psicologo/dashboard");
+        } else {
+          router.push("/dashboard");
+        }
+      }
+
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg("Correo o contraseña incorrectos. Inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMsg("");
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nabi_auth_action', 'login');
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      });
+
+      if (error) throw error;
+      
+    } catch (error: any) {
+      console.error("Error con Google:", error);
+      setErrorMsg("Hubo un error al intentar conectar con Google.");
+    }
+  };
+
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F3E7FC] via-[#E2F4EE] to-[#FDF3E9] p-6 relative overflow-hidden font-sans">
+      
+      {/* Botón Volver (Estilo Pastilla Flotante) */}
+      <Link href="/" className="absolute top-6 left-6 sm:top-10 sm:left-10 inline-flex items-center text-[12px] font-extrabold uppercase tracking-wider text-[#8A95A5] hover:text-[#6C72F1] transition-colors gap-2 z-30 bg-white/60 backdrop-blur-md px-5 py-2.5 rounded-full shadow-sm border border-white">
+        <ArrowLeft className="w-4 h-4" strokeWidth={2.5} /> Volver al inicio
+      </Link>
+
+      {/* Decoración de fondo (Glassmorphism blobs) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+         <div className="absolute -top-20 -left-20 w-96 h-96 bg-[#6C72F1] opacity-[0.05] rounded-full blur-[60px]"></div>
+         <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-[#3EAFA8] opacity-[0.05] rounded-full blur-[60px]"></div>
+      </div>
+
+      <div className="w-full max-w-[480px] bg-white/80 backdrop-blur-xl rounded-[40px] p-10 md:p-14 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white relative z-10 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+        
+        {/* Logo Centrado */}
+        <div className="w-20 h-20 bg-white rounded-[24px] shadow-sm border border-[#E2E8F0] flex items-center justify-center mb-6">
+            <img src="/logo.png" alt="Nabi Logo" className="w-12 h-12 object-contain hover:scale-105 transition-transform" />
+        </div>
+        
+        <h1 className="text-[32px] font-extrabold text-[#333333] mb-2 tracking-tight leading-tight text-center">
+          Iniciar sesión
+        </h1>
+        <p className="text-[#8A95A5] mb-10 font-medium text-[15px] text-center leading-relaxed">
+          ¿No tienes una cuenta? <Link href="/register" className="text-[#6C72F1] font-extrabold hover:text-[#5C61E1] transition-colors">Regístrate gratis</Link>
+        </p>
+        
+        {/* Alerta de Error */}
+        {errorMsg && (
+          <div className="w-full mb-8 bg-[#FEF2F2]/90 backdrop-blur-sm border border-[#FECACA] p-4 rounded-[20px] flex items-start gap-3 shadow-sm">
+             <ShieldCheck className="w-5 h-5 text-[#EF4444] flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+             <p className="text-[#B91C1C] text-[13px] font-bold leading-relaxed">{errorMsg}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="w-full space-y-6">
+          
+          <div>
+            <label className="block text-[10px] font-black text-[#6C72F1] uppercase tracking-[0.15em] mb-2 pl-2">Correo electrónico</label>
+            <input 
+              type="email" 
+              placeholder="correo@ejemplo.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className="w-full px-6 py-4 bg-white/50 border border-white rounded-[24px] text-[#333333] font-bold focus:outline-none focus:bg-white focus:border-[#6C72F1] focus:ring-4 focus:ring-[#EEF0FF] transition-all placeholder:font-medium placeholder:text-[#CBD5E1] shadow-inner text-[15px]" 
+              required 
+            />
+          </div>
+
+          <div className="mb-2">
+            <div className="flex justify-between items-center mb-2 pl-2 pr-1">
+              <label className="block text-[10px] font-black text-[#6C72F1] uppercase tracking-[0.15em]">Contraseña</label>
+              <Link href="/forgot-password" className="text-[10px] font-extrabold text-[#8A95A5] hover:text-[#6C72F1] transition-colors uppercase tracking-wider">¿Olvidaste tu clave?</Link>
+            </div>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className="w-full px-6 py-4 bg-white/50 border border-white rounded-[24px] text-[#333333] font-bold focus:outline-none focus:bg-white focus:border-[#6C72F1] focus:ring-4 focus:ring-[#EEF0FF] transition-all placeholder:font-medium placeholder:text-[#CBD5E1] shadow-inner text-[15px]" 
+              required 
+            />
+          </div>
+
+          <div className="pt-2">
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full py-4 rounded-[24px] bg-[#6C72F1] hover:bg-[#5C61E1] text-white font-extrabold text-[14px] uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(108,114,241,0.3)] hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 disabled:shadow-none flex justify-center items-center gap-2" 
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Verificando...
+                </>
+              ) : (
+                "Entrar a mi portal"
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Separador */}
+        <div className="w-full mt-10 mb-8 flex items-center justify-center opacity-60">
+           <div className="h-[1px] bg-[#CBD5E1] flex-1"></div>
+           <span className="px-4 text-[10px] font-black text-[#8A95A5] uppercase tracking-[0.2em]">O continuar con</span>
+           <div className="h-[1px] bg-[#CBD5E1] flex-1"></div>
+        </div>
+
+        {/* Botón de Google */}
+        <button 
+          onClick={handleGoogleLogin}
+          type="button" 
+          className="w-full flex items-center justify-center gap-3 bg-white/60 backdrop-blur-md border border-white text-[#333333] font-extrabold py-4 rounded-[24px] hover:bg-white transition-all shadow-sm hover:shadow-md text-[14px]"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continuar con Google
+        </button>
+        
+      </div>
+    </main>
+  );
+}
