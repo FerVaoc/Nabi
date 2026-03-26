@@ -222,7 +222,7 @@ function CheckoutForm() {
                 <label className="block text-[10px] font-black text-[#6C72F1] uppercase tracking-[0.15em] mb-2 pl-2">Nombre en la tarjeta</label>
                 <input 
                   type="text" 
-                  placeholder="Ej. Fernando Vargas" 
+                  placeholder="Ej. Pedro Gutierrez" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required 

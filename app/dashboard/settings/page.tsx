@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Mail, ChevronDown, Camera, Activity, User as UserIcon, Shield, Crown, Sparkles } from 'lucide-react';
+import { Mail, ChevronDown, Camera, Activity, User as UserIcon, Shield, Crown, Sparkles, Lock } from 'lucide-react';
 import Link from 'next/link'; 
 
 export default function SettingsPage() {
@@ -17,7 +17,8 @@ export default function SettingsPage() {
     email: '',
     age: '', 
     gender: '',
-    route: '' 
+    route: '',
+    secondaryRoute: '' // <-- Agregamos el estado para la segunda ruta
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -45,7 +46,8 @@ export default function SettingsPage() {
             email: user.email || '',
             age: profile.age?.toString() || '', 
             gender: profile.gender || '',
-            route: profile.selected_route || ''
+            route: profile.selected_route || '',
+            secondaryRoute: profile.secondary_route || '' // <-- Traemos la segunda ruta de la DB
           });
         }
       } catch (error) {
@@ -68,6 +70,8 @@ export default function SettingsPage() {
         .update({ 
           full_name: profileData.name,
           selected_route: profileData.route,
+          // Por seguridad: si por alguna razón no es premium, guardamos NULL
+          secondary_route: userPlan === 'premium' ? (profileData.secondaryRoute || null) : null,
           age: profileData.age ? parseInt(profileData.age) : null,
           gender: profileData.gender || null
         })
@@ -166,7 +170,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ÁREA DE ENFOQUE (Ruta Clínica) */}
+            {/* ÁREA DE ENFOQUE (Ruta Clínica) - AHORA CON 2 OPCIONES */}
             <div className="mb-10 p-8 bg-gradient-to-r from-[#F0FDFA] to-[#EEF0FF]/50 rounded-[32px] border border-white shadow-sm relative overflow-hidden">
               <div className="absolute -right-4 -top-4 text-[80px] opacity-[0.03] grayscale blur-[1px] rotate-12 pointer-events-none">🌿</div>
               
@@ -174,30 +178,73 @@ export default function SettingsPage() {
                 <label className="text-[11px] font-black text-[#3EAFA8] uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
                   <Activity className="w-4 h-4" /> Área de enfoque
                 </label>
-                <p className="text-[14px] text-[#64748B] mb-6 font-medium leading-relaxed max-w-md">
-                  Cambiar tu <strong className="text-[#3EAFA8]">ruta clínica</strong> actualizará automáticamente tus tareas y recomendaciones diarias.
+                <p className="text-[14px] text-[#64748B] mb-6 font-medium leading-relaxed max-w-lg">
+                  Selecciona tu ruta clínica principal. <strong className="text-[#3EAFA8]">Los usuarios Premium</strong> pueden elegir una segunda ruta para combinar tareas y personalizar su evolución.
                 </p>
-                <div className="relative max-w-sm">
-                  <select 
-                    value={profileData.route}
-                    onChange={(e) => setProfileData({...profileData, route: e.target.value})}
-                    className="w-full px-6 py-4 bg-white/80 backdrop-blur-md border border-white rounded-[24px] text-[#333333] font-extrabold focus:outline-none focus:ring-4 focus:ring-[#3EAFA8]/20 transition-all appearance-none cursor-pointer shadow-sm text-[15px]"
-                  >
-                    <option value="" disabled>Elige tu ruta...</option>
-                    <option value="Ansiedad">Ansiedad</option>
-                    <option value="Depresión">Depresión</option>
-                    <option value="Duelo">Duelo</option>
-                    <option value="Insomnio">Insomnio</option>
-                    <option value="Procrastinación">Procrastinación</option>
-                    <option value="TCA">TCA (Cond. Alimentaria)</option>
-                    <option value="TDAH">TDAH (Déficit de Atención)</option>
-                    <option value="TEPT">TEPT (Estrés Postraumático)</option>
-                    <option value="TOC">TOC (Obsesivo-Compulsivo)</option>
-                    <option value="Trastorno Bipolar">Trastorno Bipolar</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-6 text-[#3EAFA8]">
-                    <ChevronDown className="w-5 h-5" strokeWidth={3} />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  
+                  {/* RUTA 1 - PRINCIPAL */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-[#3EAFA8] uppercase tracking-[0.15em] mb-2 pl-2">Ruta Principal</label>
+                    <select 
+                      value={profileData.route}
+                      onChange={(e) => setProfileData({...profileData, route: e.target.value})}
+                      className="w-full px-6 py-4 bg-white/80 backdrop-blur-md border border-white rounded-[24px] text-[#333333] font-extrabold focus:outline-none focus:ring-4 focus:ring-[#3EAFA8]/20 transition-all appearance-none cursor-pointer shadow-sm text-[14px]"
+                    >
+                      <option value="" disabled>Elige tu ruta...</option>
+                      <option value="Ansiedad">Ansiedad</option>
+                      <option value="Depresión">Depresión</option>
+                      <option value="Duelo">Duelo</option>
+                      <option value="Insomnio">Insomnio</option>
+                      <option value="Procrastinación">Procrastinación</option>
+                      <option value="TCA">TCA (Cond. Alimentaria)</option>
+                      <option value="TDAH">TDAH (Déficit de Atención)</option>
+                      <option value="TEPT">TEPT (Estrés Postraumático)</option>
+                      <option value="TOC">TOC (Obsesivo-Compulsivo)</option>
+                      <option value="Trastorno Bipolar">Trastorno Bipolar</option>
+                    </select>
+                    <div className="pointer-events-none absolute bottom-0 right-0 top-6 flex items-center px-6 text-[#3EAFA8]">
+                      <ChevronDown className="w-5 h-5" strokeWidth={3} />
+                    </div>
                   </div>
+
+                  {/* RUTA 2 - SECUNDARIA (PREMIUM) */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-[#D97706] uppercase tracking-[0.15em] mb-2 pl-2 flex items-center gap-1.5">
+                      <Crown className="w-3.5 h-3.5" strokeWidth={3} /> Ruta Secundaria
+                    </label>
+                    {userPlan === 'premium' ? (
+                      <>
+                        <select 
+                          value={profileData.secondaryRoute}
+                          onChange={(e) => setProfileData({...profileData, secondaryRoute: e.target.value})}
+                          className="w-full px-6 py-4 bg-white/80 backdrop-blur-md border border-[#FDE047]/50 rounded-[24px] text-[#333333] font-extrabold focus:outline-none focus:ring-4 focus:ring-[#FDE047]/20 transition-all appearance-none cursor-pointer shadow-sm text-[14px]"
+                        >
+                          <option value="">Ninguna (Solo la principal)</option>
+                          <option value="Ansiedad">Ansiedad</option>
+                          <option value="Depresión">Depresión</option>
+                          <option value="Duelo">Duelo</option>
+                          <option value="Insomnio">Insomnio</option>
+                          <option value="Procrastinación">Procrastinación</option>
+                          <option value="TCA">TCA (Cond. Alimentaria)</option>
+                          <option value="TDAH">TDAH (Déficit de Atención)</option>
+                          <option value="TEPT">TEPT (Estrés Postraumático)</option>
+                          <option value="TOC">TOC (Obsesivo-Compulsivo)</option>
+                          <option value="Trastorno Bipolar">Trastorno Bipolar</option>
+                        </select>
+                        <div className="pointer-events-none absolute bottom-0 right-0 top-6 flex items-center px-6 text-[#D97706]">
+                          <ChevronDown className="w-5 h-5" strokeWidth={3} />
+                        </div>
+                      </>
+                    ) : (
+                      <Link href="/dashboard/settings/plan" className="w-full px-6 py-4 bg-[#FFFBEB]/80 backdrop-blur-md border border-[#FDE047]/50 rounded-[24px] text-[#D97706] font-extrabold transition-all shadow-sm flex items-center justify-between text-[13px] hover:bg-[#FEF3C7] group cursor-pointer h-[54px]">
+                        <span>Desbloquear 2ª ruta</span>
+                        <Lock className="w-4 h-4 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+                      </Link>
+                    )}
+                  </div>
+
                 </div>
               </div>
             </div>

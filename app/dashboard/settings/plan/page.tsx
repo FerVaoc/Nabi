@@ -154,6 +154,14 @@ export default function PlanPage() {
                </div>
                <p className="text-[14px] text-[#475569] font-medium leading-relaxed">Conexión básica con tu psicólogo</p>
             </div>
+
+            {/* SE MUESTRA LA LIMITANTE */}
+            <div className="flex gap-4 items-start opacity-40">
+               <div className="w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center flex-shrink-0 border border-white mt-0.5">
+                  <XCircle className="w-4 h-4 text-[#94A3B8]" strokeWidth={2.5} />
+               </div>
+               <p className="text-[14px] text-[#94A3B8] font-medium line-through decoration-1">Combinar 2 rutas clínicas</p>
+            </div>
             
             <div className="flex gap-4 items-start opacity-40">
                <div className="w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center flex-shrink-0 border border-white mt-0.5">
@@ -166,14 +174,7 @@ export default function PlanPage() {
                <div className="w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center flex-shrink-0 border border-white mt-0.5">
                   <XCircle className="w-4 h-4 text-[#94A3B8]" strokeWidth={2.5} />
                </div>
-               <p className="text-[14px] text-[#94A3B8] font-medium line-through decoration-1">Mensajes y apoyo personalizado</p>
-            </div>
-
-            <div className="flex gap-4 items-start opacity-40">
-               <div className="w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center flex-shrink-0 border border-white mt-0.5">
-                  <XCircle className="w-4 h-4 text-[#94A3B8]" strokeWidth={2.5} />
-               </div>
-               <p className="text-[14px] text-[#94A3B8] font-medium line-through decoration-1">Desbloqueo de especies raras</p>
+               <p className="text-[14px] text-[#94A3B8] font-medium line-through decoration-1">Colección de especies raras</p>
             </div>
           </div>
 
@@ -223,6 +224,14 @@ export default function PlanPage() {
                <p className="text-[14px] text-[#475569] font-medium leading-relaxed">Todo lo del plan Básico</p>
             </div>
 
+            {/* AQUI ESTÁ LA NUEVA FUNCIÓN DESTACADA */}
+            <div className="flex gap-4 items-start group">
+               <div className="w-6 h-6 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0 border border-white shadow-sm mt-0.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#D97706]" strokeWidth={3} />
+               </div>
+               <p className="text-[14px] text-[#1E293B] font-extrabold leading-relaxed">Combinar 2 rutas clínicas a la vez</p>
+            </div>
+
             <div className="flex gap-4 items-start group">
                <div className="w-6 h-6 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0 border border-white shadow-sm mt-0.5">
                   <CheckCircle2 className="w-4 h-4 text-[#D97706]" strokeWidth={3} />
@@ -235,13 +244,6 @@ export default function PlanPage() {
                   <CheckCircle2 className="w-4 h-4 text-[#D97706]" strokeWidth={3} />
                </div>
                <p className="text-[14px] text-[#475569] font-medium leading-relaxed">Frases de apoyo diario según tu ánimo</p>
-            </div>
-
-            <div className="flex gap-4 items-start group">
-               <div className="w-6 h-6 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0 border border-white shadow-sm mt-0.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#D97706]" strokeWidth={3} />
-               </div>
-               <p className="text-[14px] text-[#475569] font-medium leading-relaxed">Evolución por rachas (Huevo → Mariposa)</p>
             </div>
 
             <div className="flex gap-4 items-start group">

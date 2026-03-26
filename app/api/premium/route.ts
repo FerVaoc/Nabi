@@ -27,9 +27,12 @@ export async function POST(request: Request) {
             </p>
             
             <div style="background-color: #FFFBEB; border-radius: 16px; padding: 24px; margin: 30px 0; border: 1px solid #FEF3C7;">
-              <h2 style="color: #D97706; font-size: 18px; margin-top: 0;">¡Tu compañero te espera!</h2>
-              <p style="color: #B45309; font-size: 14px; margin-bottom: 0;">
+              <h2 style="color: #D97706; font-size: 18px; margin-top: 0;">¡Aprovecha al máximo tu plan!</h2>
+              <p style="color: #B45309; font-size: 14px; margin-bottom: 12px; line-height: 1.5;">
                 Ve a tu Dashboard, tu nuevo compañero evolutivo ya está desbloqueado. Comienza a registrar tus tareas y estado de ánimo para verlo crecer.
+              </p>
+              <p style="color: #B45309; font-size: 14px; margin-bottom: 0; line-height: 1.5; padding-top: 12px; border-top: 1px solid #FDE047;">
+                Recuerda visitar tus <b>Ajustes</b> de perfil para configurar tu <b>segunda ruta clínica</b> y recibir tareas combinadas para una experiencia totalmente personalizada.
               </p>
             </div>
 

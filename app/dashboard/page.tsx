@@ -20,9 +20,9 @@ const CompanionVisual = ({ stage, species, className = "w-16 h-16" }: { stage: s
   if (stage === 'huevo') {
     return (
       <div className={`${className} relative flex items-center justify-center`}>
-        <div className="absolute w-[60%] h-[80%] rounded-[45%_55%_55%_45%] bg-white shadow-md border-2 border-gray-100 overflow-hidden relative">
+        <div className="absolute w-[60%] h-[80%] rounded-[45%_55%_55%_45%] bg-white shadow-md border-2 border-gray-50 overflow-hidden relative">
           <div className="absolute -bottom-2 -right-2 w-full h-full rounded-full opacity-30 blur-md" style={{ backgroundColor: mainColor }}></div>
-          <div className="absolute top-2 left-2 w-3 h-3 bg-white rounded-full opacity-70"></div>
+          <div className="absolute top-2 left-2 w-3 h-3 bg-white rounded-full opacity-80"></div>
         </div>
       </div>
     );
@@ -135,7 +135,8 @@ export default function DashboardPage() {
 
         const todayDateString = getLocalDateString();
 
-        const { data: profile } = await supabase.from('profiles').select('full_name, selected_route, plan, current_streak, last_activity_date').eq('id', user.id).single();
+        // AQUÍ ES DONDE TRAEMOS AMBAS RUTAS (selected_route y secondary_route)
+        const { data: profile } = await supabase.from('profiles').select('full_name, selected_route, secondary_route, plan, current_streak, last_activity_date').eq('id', user.id).single();
         
         let extractedName = "Usuario";
         if (profile) {
@@ -157,18 +158,46 @@ export default function DashboardPage() {
             }
             setCurrentStreak(activeStreak);
 
+            // ==========================================
+            // LÓGICA MULTI-RUTA PARA PREMIUM Y GRATIS
+            // ==========================================
+            let routesToFetch = [];
+            let displayRouteNames = [];
+
+            // 1. Agregar ruta principal
             if (profile.selected_route) {
-              setSelectedRoute(profile.selected_route);
-              const { data: routeObj } = await supabase.from('routes').select('id').eq('name', profile.selected_route).single();
-              if (routeObj) {
-                const { data: catalogTasks } = await supabase.from('tasks_catalog').select('*').eq('route_id', routeObj.id);
+               routesToFetch.push(profile.selected_route);
+               displayRouteNames.push(profile.selected_route);
+            }
+            
+            // 2. Si es PREMIUM, agregar ruta secundaria (si la eligió)
+            if (profile.plan === 'premium' && profile.secondary_route) {
+               routesToFetch.push(profile.secondary_route);
+               displayRouteNames.push(profile.secondary_route);
+            }
+
+            if (routesToFetch.length > 0) {
+              // Unimos los nombres para mostrarlos en la UI (ej. "Ansiedad y Depresión")
+              setSelectedRoute(displayRouteNames.join(' y '));
+              
+              // Buscamos los IDs de todas las rutas que necesita este usuario
+              const { data: routeObjs } = await supabase.from('routes').select('id').in('name', routesToFetch);
+              
+              if (routeObjs && routeObjs.length > 0) {
+                const routeIds = routeObjs.map(r => r.id);
+                
+                // Traemos TODAS las tareas que pertenezcan a las rutas encontradas
+                const { data: catalogTasks } = await supabase.from('tasks_catalog').select('*').in('route_id', routeIds);
+                
                 if (catalogTasks && catalogTasks.length > 0) {
+                  // Mezclamos las tareas para que tenga un poco de ambas (pseudo-aleatorio por día)
                   const dateNumber = parseInt(todayDateString.replace(/-/g, ''));
                   let shuffled = [...catalogTasks].sort((a, b) => {
                      const pseudoRandomA = (a.id * dateNumber) % 100;
                      const pseudoRandomB = (b.id * dateNumber) % 100;
                      return pseudoRandomA - pseudoRandomB;
                   });
+                  // Mostramos 5 tareas diarias en total, sin importar si vienen de 1 o 2 rutas
                   setTasks(shuffled.slice(0, 5));
                 }
               }
@@ -413,16 +442,17 @@ export default function DashboardPage() {
   const activeSkin = AVAILABLE_SKINS.find(s => s.id === companion?.species) || AVAILABLE_SKINS[0];
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#F3E7FC] via-[#E2F4EE] to-[#FDF3E9] text-[#1E293B] font-sans relative overflow-hidden pb-24">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#F3E7FC] via-[#E2F4EE] to-[#FDF3E9] text-[#1E293B] font-sans relative overflow-x-hidden pb-24">
       
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+      {/* Contenedor Principal Alineado */}
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         
-        {/* HEADER HERO */}
-        <div className="mb-10 bg-white/60 backdrop-blur-xl p-8 sm:p-10 rounded-[40px] shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-white">
-          <h1 className="text-[40px] sm:text-[48px] font-extrabold text-[#333333] mb-1 leading-tight tracking-tight">
+        {/* HEADER HERO (Emociones) */}
+        <div className="mb-8 bg-white/60 backdrop-blur-xl p-8 sm:p-10 rounded-[40px] shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-white">
+          <h1 className="text-[32px] sm:text-[40px] font-extrabold text-[#333333] mb-1 leading-tight tracking-tight">
             ¡Hola, {userName}!
           </h1>
-          <p className="text-[#64748B] text-[18px] sm:text-[20px]">
+          <p className="text-[#8A95A5] text-[16px] sm:text-[18px] font-medium">
             ¿Cómo se siente tu santuario hoy?
           </p>
 
@@ -458,57 +488,65 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* ESTRUCTURA PRINCIPAL DEL GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
           {/* ======================================= */}
-          {/* COLUMNA IZQUIERDA: TAREAS */}
+          {/* COLUMNA IZQUIERDA: TAREAS (Ocupa 2/3) */}
           {/* ======================================= */}
-          <div className="lg:col-span-2 flex flex-col">
-            <div className="flex justify-between items-end mb-4 px-2">
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            
+            {/* Título de Tareas */}
+            <div className="flex justify-between items-end px-2">
               <div>
                 <h2 className="font-extrabold text-[22px] text-[#333333]">
                   Tareas Diarias
                 </h2>
-                {/* Enfoque actual */}
-                <p className="text-[14px] text-[#8A95A5] font-medium mt-1">
-                  Enfoque actual: <span className="text-[#6C72F1]">{selectedRoute || "Ninguno"}</span>
+                <p className="text-[13px] text-[#8A95A5] font-medium mt-1">
+                  Enfoque actual: <span className="text-[#6C72F1] font-bold uppercase tracking-wider ml-1">{selectedRoute || "Ninguno"}</span>
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-[#6C72F1] uppercase tracking-widest mb-1">
-                {totalCompletadasHoy} / {totalTareasHoy} COMPLETADAS
+              <span className="text-[10px] font-black text-[#6C72F1] bg-[#EEF0FF] px-3 py-1.5 rounded-[10px] border border-white shadow-sm uppercase tracking-[0.2em]">
+                {totalCompletadasHoy} / {totalTareasHoy}
               </span>
             </div>
 
-            <div className="space-y-3 flex-1">
+            {/* Contenedor de Tareas */}
+            <div className="space-y-4">
               {loading ? (
-                <p className="text-center text-[#94A3B8] py-10 font-bold">Preparando tu lista diaria...</p>
+                <div className="text-center py-20 bg-white/50 backdrop-blur-xl rounded-[40px] border border-white shadow-sm">
+                  <div className="w-10 h-10 border-4 border-[#6C72F1]/30 border-t-[#6C72F1] rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-[#8A95A5] font-bold">Preparando tu lista diaria...</p>
+                </div>
               ) : tasks.length === 0 && !customTask ? (
-                <div className="text-center py-10 bg-white/50 backdrop-blur-sm rounded-[24px] border border-white">
-                  <CheckCircle2 className="w-12 h-12 text-[#CBD5E1] mx-auto mb-3" />
-                  <p className="text-[#64748B] font-medium">No hay tareas para esta ruta aún.</p>
+                <div className="text-center py-20 bg-white/50 backdrop-blur-xl rounded-[40px] border border-white shadow-sm">
+                  <div className="w-16 h-16 bg-[#EEF0FF] rounded-[20px] flex items-center justify-center mx-auto mb-4 border border-white shadow-sm">
+                    <CheckCircle2 className="w-8 h-8 text-[#6C72F1]" />
+                  </div>
+                  <p className="text-[#8A95A5] font-bold text-[15px]">Aún no hay tareas para esta ruta.</p>
                 </div>
               ) : (
                 <>
                   {/* TAREA PERSONALIZADA DEL PSICÓLOGO */}
                   {customTask && (
-                    <div onClick={toggleCustomTask} className={`p-4 rounded-[24px] cursor-pointer transition-all duration-300 border group shadow-sm ${completedCustomTask ? 'bg-[#EEF0FF]/80 backdrop-blur-md border-white' : 'bg-white/80 backdrop-blur-xl border-[#FEF3C7] hover:shadow-md hover:-translate-y-0.5'}`}>
-                      <div className="flex items-center gap-4 relative z-10 w-full">
+                    <div onClick={toggleCustomTask} className={`p-5 rounded-[32px] cursor-pointer transition-all duration-300 border group shadow-sm ${completedCustomTask ? 'bg-white/40 backdrop-blur-md border-white/50 opacity-70' : 'bg-gradient-to-r from-[#FFFBEB] to-white/80 backdrop-blur-xl border-[#FDE047]/50 hover:shadow-md hover:-translate-y-0.5'}`}>
+                      <div className="flex items-center gap-5 relative z-10 w-full">
                         
-                        <div className={`w-[42px] h-[42px] rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors border shadow-sm ${completedCustomTask ? 'bg-white border-[#C7D2FE]' : 'bg-[#FFFBEB] border-[#FEF3C7]'}`}>
-                           <Users className={`w-5 h-5 ${completedCustomTask ? 'text-[#6C72F1]' : 'text-[#D97706]'}`} />
+                        <div className={`w-[48px] h-[48px] rounded-[18px] flex items-center justify-center flex-shrink-0 transition-colors border shadow-sm ${completedCustomTask ? 'bg-[#E2E8F0] border-white' : 'bg-[#FEF3C7] border-white'}`}>
+                           <Users className={`w-6 h-6 ${completedCustomTask ? 'text-[#94A3B8]' : 'text-[#D97706]'}`} />
                         </div>
                         
                         <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-[8px] font-black bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">Asignada por tu Doc</span>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[9px] font-black bg-[#FDE047] text-[#B45309] px-2.5 py-1 rounded-md uppercase tracking-widest shadow-sm">Asignada por tu Doc</span>
                             </div>
-                            <h4 className={`font-extrabold text-[14px] transition-colors duration-300 ${completedCustomTask ? 'text-[#94A3B8] line-through decoration-1' : 'text-[#333333]'}`}>{customTask.title}</h4>
-                            <p className={`text-[12px] font-medium mt-0.5 transition-colors duration-300 line-clamp-1 ${completedCustomTask ? 'text-[#CBD5E1]' : 'text-[#8A95A5]'}`}>{customTask.description}</p>
+                            <h4 className={`font-extrabold text-[16px] transition-colors duration-300 ${completedCustomTask ? 'text-[#94A3B8] line-through decoration-1' : 'text-[#333333]'}`}>{customTask.title}</h4>
+                            <p className={`text-[13px] font-medium mt-0.5 transition-colors duration-300 line-clamp-2 ${completedCustomTask ? 'text-[#CBD5E1]' : 'text-[#64748B]'}`}>{customTask.description}</p>
                         </div>
                         
-                        {/* Botón de Check Círculo */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-2 ${completedCustomTask ? 'bg-[#6C72F1] border-[#6C72F1]' : 'border-[#CBD5E1] bg-transparent group-hover:border-[#D97706]'}`}>
-                          {completedCustomTask && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                        {/* Checkbox Circular */}
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-2 ${completedCustomTask ? 'bg-[#D97706] border-[#D97706]' : 'border-[#CBD5E1] bg-white group-hover:border-[#D97706]'}`}>
+                          {completedCustomTask && <Check className="w-4 h-4 text-white stroke-[3]" />}
                         </div>
 
                       </div>
@@ -519,21 +557,21 @@ export default function DashboardPage() {
                   {tasks.map((task) => {
                     const isCompleted = completedTasks.includes(task.id);
                     return (
-                      <div key={task.id} onClick={() => toggleTask(task.id)} className={`p-4 rounded-[24px] cursor-pointer transition-all duration-300 border group shadow-sm ${isCompleted ? 'bg-[#EEF0FF]/80 backdrop-blur-md border-white' : 'bg-white/80 backdrop-blur-xl border-white hover:shadow-md hover:-translate-y-0.5'}`}>
-                        <div className="flex items-center gap-4 relative z-10 w-full">
+                      <div key={task.id} onClick={() => toggleTask(task.id)} className={`p-5 rounded-[32px] cursor-pointer transition-all duration-300 border group shadow-sm ${isCompleted ? 'bg-white/40 backdrop-blur-md border-white/50 opacity-70' : 'bg-white/80 backdrop-blur-xl border-white hover:shadow-md hover:-translate-y-0.5'}`}>
+                        <div className="flex items-center gap-5 relative z-10 w-full">
                           
-                          <div className={`w-[42px] h-[42px] rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors border shadow-sm ${isCompleted ? 'bg-white border-[#C7D2FE]' : 'bg-[#F8FAFC] border-[#F1F5F9]'}`}>
-                             {getIcon(task.icon)}
+                          <div className={`w-[48px] h-[48px] rounded-[18px] flex items-center justify-center flex-shrink-0 transition-colors border shadow-sm ${isCompleted ? 'bg-[#E2E8F0] border-white' : 'bg-[#EEF0FF] border-white'}`}>
+                             {isCompleted ? <CheckCircle2 className="w-6 h-6 text-[#94A3B8]" /> : getIcon(task.icon)}
                           </div>
                           
                           <div className="flex-1">
-                              <h4 className={`font-extrabold text-[14px] transition-colors duration-300 ${isCompleted ? 'text-[#94A3B8] line-through decoration-1' : 'text-[#333333]'}`}>{task.title}</h4>
-                              <p className={`text-[12px] font-medium mt-0.5 transition-colors duration-300 line-clamp-1 ${isCompleted ? 'text-[#CBD5E1]' : 'text-[#8A95A5]'}`}>{task.description}</p>
+                              <h4 className={`font-extrabold text-[16px] transition-colors duration-300 ${isCompleted ? 'text-[#94A3B8] line-through decoration-1' : 'text-[#333333]'}`}>{task.title}</h4>
+                              <p className={`text-[13px] font-medium mt-0.5 transition-colors duration-300 line-clamp-1 ${isCompleted ? 'text-[#CBD5E1]' : 'text-[#8A95A5]'}`}>{task.description}</p>
                           </div>
                           
-                          {/* Botón de Check Círculo */}
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-2 ${isCompleted ? 'bg-[#6C72F1] border-[#6C72F1]' : 'border-[#CBD5E1] bg-transparent group-hover:border-[#6C72F1]'}`}>
-                            {isCompleted && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                          {/* Checkbox Circular */}
+                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-2 shadow-inner ${isCompleted ? 'bg-[#6C72F1] border-[#6C72F1]' : 'border-[#CBD5E1] bg-white group-hover:border-[#6C72F1]'}`}>
+                            {isCompleted && <Check className="w-4 h-4 text-white stroke-[3]" />}
                           </div>
 
                         </div>
@@ -546,47 +584,48 @@ export default function DashboardPage() {
           </div>
 
           {/* ======================================= */}
-          {/* COLUMNA DERECHA: WIDGETS */}
+          {/* COLUMNA DERECHA: WIDGETS (Ocupa 1/3) */}
           {/* ======================================= */}
-          <div className="flex flex-col gap-6">
+          <div className="lg:col-span-1 flex flex-col gap-6">
             
             {/* TARJETA DE RACHAS */}
-            <div className="bg-gradient-to-br from-[#6A70F0] to-[#5C61E1] p-6 rounded-[32px] flex flex-col items-start justify-center relative overflow-hidden shadow-lg border border-white/10 h-[160px]">
-              <Zap className="absolute -right-8 -bottom-6 w-40 h-40 text-white opacity-[0.08] rotate-12" fill="currentColor" />
-              <p className="text-[9px] font-extrabold uppercase tracking-widest text-white/90 mb-1 relative z-10">TU RACHA</p>
+            <div className="bg-gradient-to-br from-[#6A70F0] to-[#5C61E1] p-8 rounded-[40px] flex flex-col items-start justify-center relative overflow-hidden shadow-md border border-white/20 h-[180px] hover:shadow-lg transition-shadow">
+              <Zap className="absolute -right-8 -bottom-6 w-48 h-48 text-white opacity-[0.05] rotate-12" fill="currentColor" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90 mb-2 relative z-10">Tu Constancia</p>
               <div className="flex items-baseline gap-2 relative z-10">
-                <h3 className="text-[48px] font-black tracking-tight leading-none text-white">{currentStreak}</h3>
-                <span className="text-[16px] font-bold text-white">DÍAS</span>
+                <h3 className="text-[56px] font-black tracking-tight leading-none text-white">{currentStreak}</h3>
+                <span className="text-[16px] font-bold text-white/80">DÍAS</span>
               </div>
-              <div className="mt-3 relative z-10 bg-white/10 backdrop-blur-sm rounded-[12px] px-3 py-1.5 w-fit border border-white/10">
-                 <p className="text-[11px] font-medium text-white/90">
-                    {currentStreak > 0 ? '¡Excelente constancia! Sigue así.' : 'Completa una tarea para empezar.'}
+              <div className="mt-auto pt-2 relative z-10">
+                 <p className="text-[12px] font-medium text-white/80 leading-snug">
+                    {currentStreak > 0 ? '¡Excelente trabajo! Sigue así.' : 'Completa tu primera tarea de hoy.'}
                  </p>
               </div>
             </div>
 
             {/* TU COMPAÑERO / NABI */}
             {userPlan === 'gratis' ? (
-              <Link href="/dashboard/settings/plan" className="bg-white/70 backdrop-blur-xl p-8 rounded-[32px] flex flex-col items-center text-center shadow-sm border border-white relative group cursor-pointer hover:shadow-md transition-all">
-                <div className="w-[80px] h-[80px] bg-[#F8FAFC] rounded-full flex items-center justify-center mb-4 border border-[#E2E8F0] shadow-inner group-hover:scale-105 transition-transform">
-                   <Lock className="w-[20px] h-[20px] text-[#64748B]" />
+              <Link href="/dashboard/settings/plan" className="bg-white/70 backdrop-blur-xl p-8 rounded-[40px] flex flex-col items-center text-center shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-white relative group cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all">
+                <div className="w-[88px] h-[88px] bg-[#F8FAFC] rounded-[28px] flex items-center justify-center mb-6 border border-[#E2E8F0] shadow-inner group-hover:scale-105 transition-transform duration-300">
+                   <Lock className="w-[24px] h-[24px] text-[#94A3B8]" strokeWidth={2.5} />
                 </div>
-                <h3 className="text-[#333333] font-extrabold text-[20px] mb-2">Tu Compañero</h3>
-                <p className="text-[#64748B] text-[13px] leading-relaxed mb-6 font-medium max-w-[200px]">
-                  Descubre a tu asistente terapéutico y mira cómo crece.
+                <h3 className="text-[#333333] font-extrabold text-[22px] mb-2 leading-tight">Tu Compañero</h3>
+                <p className="text-[#8A95A5] text-[14px] leading-relaxed mb-8 font-medium max-w-[200px]">
+                  Descubre a tu asistente terapéutico y mira cómo crece contigo.
                 </p>
-                <div className="w-full py-3 bg-[#FFFBEB] border border-[#FDE047]/80 text-[#D97706] font-bold rounded-2xl text-[13px] transition-all flex items-center justify-center gap-1.5 group-hover:bg-[#FEF3C7]">
-                  <Sparkles className="w-[14px] h-[14px]" /> Desbloquear Premium
+                <div className="w-full py-4 bg-gradient-to-r from-[#FEF3C7] to-[#FFFBEB] border border-[#FDE047] text-[#D97706] font-black uppercase tracking-wider rounded-[20px] text-[12px] transition-all flex items-center justify-center gap-2 group-hover:shadow-md">
+                  <Sparkles className="w-[16px] h-[16px]" strokeWidth={2.5} /> Desbloquear Premium
                 </div>
               </Link>
             ) : (
-              <div className="bg-white/70 backdrop-blur-xl p-6 rounded-[32px] flex flex-col items-center text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-white relative group">
-                <div className={`w-[80px] h-[80px] bg-gradient-to-b ${activeSkin.gradient} rounded-full border-4 border-white shadow-md flex items-center justify-center mb-3 relative ring-1 ring-[#E2E8F0]`}>
-                   <CompanionVisual stage={companion?.stage || 'huevo'} species={companion?.species || 'comun'} className="w-[50px] h-[50px]" />
-                   <div className="absolute bottom-0 right-0 w-[14px] h-[14px] bg-[#34D399] rounded-full border-[2px] border-white"></div>
+              <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[40px] flex flex-col items-center text-center shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-white relative group h-full">
+                
+                <div className={`w-[96px] h-[96px] bg-gradient-to-b ${activeSkin.gradient} rounded-[32px] border-[4px] border-white shadow-sm flex items-center justify-center mb-4 relative transition-transform duration-500 group-hover:scale-105`}>
+                   <CompanionVisual stage={companion?.stage || 'huevo'} species={companion?.species || 'comun'} className="w-[60px] h-[60px]" />
+                   <div className="absolute -bottom-2 -right-2 w-[20px] h-[20px] bg-[#34D399] rounded-full border-[3px] border-white shadow-sm"></div>
                 </div>
                 
-                <h3 className="text-[#333333] font-extrabold text-[18px] mb-1 flex items-center justify-center gap-2">
+                <h3 className="text-[#333333] font-extrabold text-[22px] mb-1 flex items-center justify-center gap-2">
                   {companion?.name || 'Compañero Nabi'} 
                   <button 
                     onClick={() => {
@@ -594,35 +633,42 @@ export default function DashboardPage() {
                       setModalTab('skins');
                       setIsModalOpen(true);
                     }} 
-                    className="p-1 rounded-full text-[#A0AABF] hover:bg-[#EEF0FF] hover:text-[#6C72F1] transition-colors"
+                    className="p-1.5 rounded-full text-[#A0AABF] hover:bg-[#EEF0FF] hover:text-[#6C72F1] transition-colors"
                   >
-                    <Edit2 className="w-[12px] h-[12px]" />
+                    <Edit2 className="w-[14px] h-[14px]" strokeWidth={2.5} />
                   </button>
                 </h3>
                 
-                <p className="text-[#8A95A5] text-[11px] font-medium mb-4">
+                <p className="text-[#8A95A5] text-[12px] font-black uppercase tracking-widest mb-6 bg-white/50 px-4 py-1.5 rounded-full border border-white shadow-sm">
                   Nivel {compLevel} • {getStageName(companion?.stage || 'huevo')}
                 </p>
                 
-                <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-xl p-3 mb-5 w-full">
-                  <p className="text-[12px] text-[#475569] font-medium leading-snug">
+                {/* Diálogo / Chat */}
+                <div className="bg-white/50 backdrop-blur-sm border border-white shadow-sm rounded-[24px] p-5 mb-6 w-full relative">
+                  {/* Flechita del globo de chat */}
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/50 rotate-45 border-l border-t border-white"></div>
+                  <p className="text-[13px] text-[#475569] font-medium leading-relaxed relative z-10 italic">
                     "{currentMessage}"
                   </p>
                 </div>
 
-                <div className="w-full flex items-center justify-center mb-2">
-                  <div className="w-[80%] bg-[#EEF0FF] rounded-full h-[5px] overflow-hidden">
+                {/* Barra de XP */}
+                <div className="w-full flex flex-col items-center justify-center mb-8 mt-auto">
+                  <div className="w-full flex justify-between items-center mb-2 px-1">
+                    <span className="text-[10px] font-black text-[#6C72F1] tracking-widest">XP</span>
+                    <span className="text-[10px] font-black text-[#8A95A5] tracking-widest">
+                      {currentLevelXp} / {xpNeededForNextLevel}
+                    </span>
+                  </div>
+                  <div className="w-full bg-white border border-[#E2E8F0] rounded-full h-[8px] overflow-hidden shadow-inner p-[1.5px]">
                     <div 
                       className="bg-[#6C72F1] h-full rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${progressPercentage}%` }}
                     ></div>
                   </div>
                 </div>
-                <p className="text-[9px] font-black text-[#94A3B8] tracking-widest mb-4">
-                  {currentLevelXp} / {xpNeededForNextLevel} XP
-                </p>
 
-                <button className="w-full py-3 bg-[#6C72F1] hover:bg-[#5C61E1] text-white rounded-2xl font-bold text-[12px] transition-all shadow-md tracking-wide">
+                <button className="w-full py-4 bg-[#6C72F1] hover:bg-[#5C61E1] text-white rounded-[20px] font-extrabold text-[13px] uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(108,114,241,0.3)] hover:-translate-y-0.5 hover:shadow-lg">
                   Hablar con {companion?.name || 'Nabi'}
                 </button>
               </div>
@@ -631,116 +677,118 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* MODAL DE SKINS Y NOMBRE */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in p-4">
-            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
+      </div>
+
+      {/* ======================================= */}
+      {/* MODAL FLOTANTE FUERA DEL GRID           */}
+      {/* ======================================= */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#1E293B]/40 backdrop-blur-md flex items-center justify-center z-[100] animate-in fade-in p-4">
+          <div className="bg-white/90 backdrop-blur-xl border border-white rounded-[40px] w-full max-w-lg shadow-[0_10px_50px_rgba(0,0,0,0.1)] relative animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="flex border-b border-gray-100 relative">
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-[#8A95A5] hover:text-[#1E293B] transition-all p-2.5 z-10 bg-white shadow-sm border border-gray-50 rounded-full hover:scale-110">
+                <X className="w-5 h-5" strokeWidth={2.5} />
+              </button>
               
-              <div className="flex border-b border-gray-100 relative">
-                <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-[#94A3B8] hover:text-[#1E293B] transition-colors p-2 z-10 bg-[#FAF8F5] rounded-full">
-                  <X className="w-5 h-5" />
-                </button>
-                
+              <button 
+                onClick={() => setModalTab('name')}
+                className={`flex-1 py-6 font-extrabold text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${modalTab === 'name' ? 'text-[#6C72F1] border-b-[3px] border-[#6C72F1] bg-[#EEF0FF]' : 'text-[#8A95A5] hover:bg-[#F8FAFC]'}`}
+              >
+                <Type className="w-4 h-4" strokeWidth={2.5} /> Nombre
+              </button>
+              <button 
+                onClick={() => setModalTab('skins')}
+                className={`flex-1 py-6 font-extrabold text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${modalTab === 'skins' ? 'text-[#6C72F1] border-b-[3px] border-[#6C72F1] bg-[#EEF0FF]' : 'text-[#8A95A5] hover:bg-[#F8FAFC]'}`}
+              >
+                <Palette className="w-4 h-4" strokeWidth={2.5} /> Apariencia
+              </button>
+            </div>
+
+            {modalTab === 'name' && (
+              <div className="p-10 flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-[#EEF0FF] rounded-[24px] flex items-center justify-center mb-6 border border-white shadow-sm">
+                  <Sparkles className="w-10 h-10 text-[#6C72F1]" strokeWidth={2} />
+                </div>
+                <h3 className="text-[28px] font-extrabold text-[#333333] mb-2 leading-tight">Renombrar</h3>
+                <p className="text-[#8A95A5] text-[15px] mb-8 font-medium">
+                  Dale un nombre único a tu compañero evolutivo.
+                </p>
+                <input 
+                  type="text" 
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ej. Mariposita, Navi, Luz..."
+                  className="w-full px-6 py-5 bg-white/50 border border-white shadow-inner rounded-[24px] text-[#333333] font-black focus:outline-none focus:ring-4 focus:ring-[#EEF0FF] transition-all mb-8 text-center text-[18px] tracking-wide placeholder:text-[#CBD5E1] placeholder:font-medium"
+                  maxLength={20}
+                  autoFocus
+                />
                 <button 
-                  onClick={() => setModalTab('name')}
-                  className={`flex-1 py-5 font-bold text-sm flex items-center justify-center gap-2 transition-colors ${modalTab === 'name' ? 'text-[#6C72F1] border-b-[3px] border-[#6C72F1] bg-[#EEF0FF]' : 'text-[#94A3B8] hover:bg-gray-50'}`}
+                  onClick={saveCompanionName}
+                  disabled={isSaving || !newName.trim()}
+                  className="w-full py-4 bg-[#6C72F1] hover:bg-[#5C61E1] text-white rounded-[20px] font-extrabold text-[14px] uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(108,114,241,0.3)] hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
                 >
-                  <Type className="w-4 h-4" /> Nombre
-                </button>
-                <button 
-                  onClick={() => setModalTab('skins')}
-                  className={`flex-1 py-5 font-bold text-sm flex items-center justify-center gap-2 transition-colors ${modalTab === 'skins' ? 'text-[#6C72F1] border-b-[3px] border-[#6C72F1] bg-[#EEF0FF]' : 'text-[#94A3B8] hover:bg-gray-50'}`}
-                >
-                  <Palette className="w-4 h-4" /> Apariencia
+                  {isSaving ? 'Guardando...' : 'Guardar nombre'}
                 </button>
               </div>
+            )}
 
-              {modalTab === 'name' && (
-                <div className="p-8 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-[#EEF0FF] rounded-2xl flex items-center justify-center mb-6 border border-white shadow-sm">
-                    <Sparkles className="w-8 h-8 text-[#6C72F1]" />
-                  </div>
-                  <h3 className="text-2xl font-extrabold text-[#333333] mb-2">Renombrar</h3>
-                  <p className="text-[#8A95A5] text-sm mb-6 font-medium">
-                    Dale un nombre único a tu compañero evolutivo.
-                  </p>
-                  <input 
-                    type="text" 
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Ej. Mariposita, Navi, Luz..."
-                    className="w-full px-5 py-4 bg-[#F8FAFC] border border-transparent rounded-[20px] text-[#333333] font-bold focus:outline-none focus:bg-white focus:border-[#6C72F1] transition-all mb-6 text-center text-lg shadow-inner"
-                    maxLength={20}
-                    autoFocus
-                  />
-                  <button 
-                    onClick={saveCompanionName}
-                    disabled={isSaving || !newName.trim()}
-                    className="w-full py-4 bg-[#6C72F1] hover:bg-[#5C61E1] text-white rounded-[20px] font-extrabold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                  >
-                    {isSaving ? 'Guardando...' : 'Guardar nombre'}
-                  </button>
+            {modalTab === 'skins' && (
+              <div className="p-8 overflow-y-auto custom-scrollbar bg-white">
+                <div className="text-center mb-8">
+                  <h3 className="text-[24px] font-extrabold text-[#333333] mb-2">Tu Colección</h3>
+                  <p className="text-[#8A95A5] text-[14px] font-medium">Sube de nivel para desbloquear nuevas especies.</p>
                 </div>
-              )}
 
-              {modalTab === 'skins' && (
-                <div className="p-6 overflow-y-auto bg-[#F8FAFC]">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-extrabold text-[#333333] mb-1">Tu Colección</h3>
-                    <p className="text-[#8A95A5] text-xs font-medium">Sube de nivel para desbloquear nuevas especies.</p>
-                  </div>
+                <div className="grid grid-cols-2 gap-5">
+                  {AVAILABLE_SKINS.map((skin) => {
+                    const isUnlocked = compLevel >= skin.level;
+                    const isEquipped = companion?.species === skin.id || (skin.id === 'comun' && !companion?.species);
+                    
+                    return (
+                      <div 
+                        key={skin.id}
+                        onClick={() => handleEquipSkin(skin.id, skin.level)}
+                        className={`relative rounded-[32px] p-6 flex flex-col items-center text-center transition-all ${
+                          isUnlocked ? 'cursor-pointer hover:-translate-y-1 hover:shadow-lg' : 'opacity-50 cursor-not-allowed grayscale'
+                        } ${isEquipped ? 'bg-white ring-4 ring-[#6C72F1] shadow-md border-transparent' : 'bg-white border border-gray-100 shadow-sm hover:border-[#CBD5E1]'}`}
+                      >
+                        {isEquipped && (
+                          <div className="absolute top-4 right-4 w-7 h-7 bg-[#6C72F1] rounded-full flex items-center justify-center z-10 shadow-sm border-2 border-white">
+                            <CheckCircle2 className="w-4 h-4 text-white" strokeWidth={3} />
+                          </div>
+                        )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {AVAILABLE_SKINS.map((skin) => {
-                      const isUnlocked = compLevel >= skin.level;
-                      const isEquipped = companion?.species === skin.id || (skin.id === 'comun' && !companion?.species);
-                      
-                      return (
-                        <div 
-                          key={skin.id}
-                          onClick={() => handleEquipSkin(skin.id, skin.level)}
-                          className={`relative rounded-[24px] p-5 flex flex-col items-center text-center transition-all ${
-                            isUnlocked ? 'cursor-pointer hover:-translate-y-1 hover:shadow-md' : 'opacity-60 cursor-not-allowed grayscale'
-                          } ${isEquipped ? 'bg-white ring-2 ring-[#6C72F1] shadow-md' : 'bg-white border border-gray-100 shadow-sm'}`}
-                        >
-                          {isEquipped && (
-                            <div className="absolute top-3 right-3 w-6 h-6 bg-[#6C72F1] rounded-full flex items-center justify-center z-10 shadow-sm border border-white">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                        <div className={`w-24 h-24 bg-gradient-to-b ${skin.gradient} rounded-[24px] flex items-center justify-center mb-5 relative border-[3px] border-white shadow-inner`}>
+                          <CompanionVisual stage="mariposa" species={skin.id} className="w-16 h-16" />
+                          {!isUnlocked && (
+                            <div className="absolute inset-0 bg-[#0F172A]/10 rounded-[20px] flex items-center justify-center backdrop-blur-[2px]">
+                              <Lock className="w-6 h-6 text-[#333333]" strokeWidth={2.5} />
                             </div>
                           )}
-
-                          <div className={`w-20 h-20 bg-gradient-to-b ${skin.gradient} rounded-[20px] flex items-center justify-center mb-4 relative border border-white shadow-inner`}>
-                            <CompanionVisual stage="mariposa" species={skin.id} className="w-12 h-12" />
-                            {!isUnlocked && (
-                              <div className="absolute inset-0 bg-slate-900/10 rounded-2xl flex items-center justify-center backdrop-blur-[1px]">
-                                <Lock className="w-5 h-5 text-slate-700" />
-                              </div>
-                            )}
-                          </div>
-
-                          <h4 className="font-extrabold text-[#333333] text-sm leading-tight mb-1.5">{skin.name}</h4>
-                          
-                          {isUnlocked ? (
-                            <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest ${isEquipped ? 'bg-[#EEF0FF] text-[#6C72F1]' : 'bg-[#F1F5F9] text-[#94A3B8]'}`}>
-                              {isEquipped ? 'Equipado' : 'Desbloqueado'}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-black text-[#D97706] bg-[#FFFBEB] px-3 py-1.5 rounded-xl flex items-center gap-1 uppercase tracking-widest">
-                              <Lock className="w-3 h-3" /> Nivel {skin.level}
-                            </span>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <h4 className="font-extrabold text-[#333333] text-[15px] leading-tight mb-2.5">{skin.name}</h4>
+                        
+                        {isUnlocked ? (
+                          <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${isEquipped ? 'bg-[#EEF0FF] text-[#6C72F1] border border-white shadow-sm' : 'bg-[#F8FAFC] text-[#8A95A5] border border-transparent'}`}>
+                            {isEquipped ? 'Equipado' : 'Desbloqueado'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black text-[#D97706] bg-[#FFFBEB] px-4 py-1.5 rounded-full flex items-center justify-center gap-1.5 uppercase tracking-widest border border-white shadow-sm">
+                            <Lock className="w-3 h-3" strokeWidth={3} /> Nivel {skin.level}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
 
-            </div>
           </div>
-        )}
-
-      </div>
+        </div>
+      )}
     </div>
   );
 }

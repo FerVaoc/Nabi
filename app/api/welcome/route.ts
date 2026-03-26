@@ -24,9 +24,12 @@ export async function POST(request: Request) {
           </p>
           
           <div style="background-color: #F0FDFA; border-radius: 16px; padding: 24px; margin: 30px 0; border: 1px solid #CCFBF1;">
-            <h2 style="color: #134E48; font-size: 18px; margin-top: 0;">Descubre a tu compañero</h2>
-            <p style="color: #115E59; font-size: 14px; margin-bottom: 0;">
-              Al entrar a tu portal, notarás la silueta de una mariposa. Es el <b>Compañero Nabi</b>, un asistente terapéutico inteligente y exclusivo de nuestro plan <b>Premium</b>. Al suscribirte, podrás desbloquearlo para recibir consejos diarios basados en tu estado de ánimo, y ver cómo evoluciona (de huevito a mariposa exótica) con tus rachas.
+            <h2 style="color: #134E48; font-size: 18px; margin-top: 0;">Descubre todo lo que puedes lograr</h2>
+            <p style="color: #115E59; font-size: 14px; margin-bottom: 12px; line-height: 1.5;">
+              Al entrar a tu portal, notarás la silueta de una mariposa. Es el <b>Compañero Nabi</b>, un asistente terapéutico inteligente y exclusivo de nuestro plan <b>Premium</b>. Al suscribirte, podrás desbloquearlo para recibir consejos diarios basados en tu estado de ánimo, y ver cómo evoluciona con tus rachas.
+            </p>
+            <p style="color: #115E59; font-size: 14px; margin-bottom: 0; line-height: 1.5; padding-top: 12px; border-top: 1px solid #99F6E4;">
+              Además, con Premium tendrás la posibilidad de combinar hasta <b>dos rutas clínicas</b> al mismo tiempo (por ejemplo, Ansiedad e Insomnio), recibiendo tareas personalizadas para una experiencia 100% adaptada a ti.
             </p>
           </div>
 
